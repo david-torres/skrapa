@@ -2,7 +2,11 @@
 
 Skrapa is a web scraping tool designed to be as easy to use for non-technical folk as possible. It combines the powerful [Colly](http://go-colly.org/) library with a simple configuration format. Simply write out a pipeline of commands to instruct Skrapa to follow links and collect data from pages.
 
-To use Skrapa, download the [latest release](https://github.com/david-torres/skrapa/releases) and create a configuration file for it to follow.
+To use Skrapa, download the [latest release](https://github.com/david-torres/skrapa/releases) and create a configuration file for it to follow. Check out the [examples folder](https://github.com/david-torres/skrapa/tree/master/examples) for inspiration.
+
+Run Skrapa from the command line:
+
+    $ skrapa --file github_stars.toml
 
 ## Skrapa Configuration Documentation
 
@@ -36,5 +40,5 @@ attr = "text" # the 'attr' field tells Skrapa which attribute of this element we
 selector = "span.name"
 action = "collect"
 column = "name"
-data = "text"
+attr = "text"
 ```

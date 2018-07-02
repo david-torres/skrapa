@@ -25,4 +25,4 @@ attr = "text" # the 'attr' field tells Skrapa which attribute of this element we
 selector = "span.name"
 action = "collect"
 column = "name"
-data = "text"
+attr = "text"
