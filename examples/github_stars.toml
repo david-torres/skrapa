@@ -1,0 +1,65 @@
+# Scrape some info from my starred github repos
+#
+# 1. Enter at github.com/david-torres
+# 2. "follow" the Stars link
+# 3. "collect" all the starred project names
+# 4. "collect" all the starred project links
+# 5. "follow" all the starred project links
+# 6. "collect" the watchers count
+# 7. "collect" the stars count
+# 8. "collect" the forks count
+
+[main]
+# 1. Enter at github.com/david-torres
+url = "https://github.com/david-torres"
+file = "github_stars.json"
+format = "json"
+allowed_domains = ["github.com"]
+
+# 2. "follow" the Stars link
+[[pipeline]]
+selector = "a[title='Stars']"
+action = "follow"
+attr = "href"
+visit_once = true
+
+# 3. "collect" all the starred project names
+[[pipeline]]
+selector = "div.d-inline-block.mb-1 a"
+action = "collect"
+column = "name"
+attr = "text"
+
+# 4. "collect" all the starred project links
+[[pipeline]]
+selector = "div.d-inline-block.mb-1 a"
+action = "collect"
+column = "link"
+attr = "href"
+
+# 5. "follow" all the starred project links
+[[pipeline]]
+selector = "div.d-inline-block.mb-1 a"
+action = "follow"
+attr = "href"
+
+# 6. "collect" the watchers count
+[[pipeline]]
+selector = "ul.pagehead-actions > li:nth-child(1) a.social-count"
+action = "collect"
+column = "watchers"
+attr = "text"
+
+# 7. "collect" the stars count
+[[pipeline]]
+selector = "ul.pagehead-actions > li:nth-child(2) a.social-count"
+action = "collect"
+column = "stars"
+attr = "text"
+
+# 8. "collect" the forks count
+[[pipeline]]
+selector = "ul.pagehead-actions > li:nth-child(3) a.social-count"
+action = "collect"
+column = "forks"
+attr = "text"

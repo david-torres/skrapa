@@ -1,0 +1,34 @@
+# Scrape some crypto info from CoinMarketCap
+#
+# 1. Enter at coinmarketcap.com/all/views/all
+# 2. "collect" the coin name
+# 3. "collect" the coin symbol
+# 4. "collect" the coin price
+
+[main]
+# 1. Enter at coinmarketcap.com/all/views/all
+url = "https://coinmarketcap.com/all/views/all/"
+file = "coinmarketcap.csv"
+format = "csv"
+allowed_domains = ["coinmarketcap.com"]
+
+# 2. "collect" the coin name
+[[pipeline]]
+selector = "a.currency-name-container"
+action = "collect"
+attr = "text"
+column = "name"
+
+# 3. "collect" the coin symbol
+[[pipeline]]
+selector = "td.text-left.col-symbol"
+action = "collect"
+column = "symbol"
+attr = "text"
+
+# 4. "collect" the coin price
+[[pipeline]]
+selector = ".price"
+action = "collect"
+column = "price"
+attr = "text"
