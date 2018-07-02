@@ -12,7 +12,7 @@ Run Skrapa from the command line:
 
 Skrapa configuration is in [TOML](https://github.com/toml-lang/toml#toml) format. It has two primary parts, the main configuration block and the pipeline. The main block tells Skrapa what URL to scrape and where to save data. The pipeline is a repeatable configuration block that consists of commands for Skrapa to follow.
 
-```
+```toml
 # primary configuration block
 [main]
 url = "https://example.com" # the url to scrape
