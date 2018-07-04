@@ -8,7 +8,6 @@ type Config struct {
 		Format         string   `toml:"format"`
 		UserAgent      string   `toml:"user_agent,omitempty"`
 		Delay          int      `toml:"delay,omitempty"`
-		RandomDelay    int      `toml:"random_delay,omitempty"`
 		AllowedDomains []string `toml:"allowed_domains,omitempty"`
 	} `toml:"main"`
 	Pipeline []*PipelineItem `toml:"pipeline"`

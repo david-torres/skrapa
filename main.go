@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -62,21 +63,16 @@ func initCollector() {
 	}
 
 	c = colly.NewCollector(
+		colly.Async(false),
 		colly.UserAgent(ua),
 		colly.AllowedDomains(config.Main.AllowedDomains...),
 	)
 
 	if config.Main.Delay != 0 {
+		log.Println("Adding delay: " + strconv.Itoa(config.Main.Delay))
 		c.Limit(&colly.LimitRule{
 			DomainGlob: ".*",
 			Delay:      time.Duration(config.Main.Delay) * time.Second,
-		})
-	}
-
-	if config.Main.RandomDelay != 0 {
-		c.Limit(&colly.LimitRule{
-			DomainGlob:  ".*",
-			RandomDelay: time.Duration(config.Main.RandomDelay) * time.Second,
 		})
 	}
 
@@ -204,7 +200,7 @@ func collateJSON(data map[string][]string) []map[string]string {
 		keys = append(keys, k)
 	}
 
-	if len(keys) < 1 {
+	if len(keys) <= 0 {
 		log.Fatal("No data collected")
 	}
 
@@ -228,7 +224,7 @@ func collateCSV(data map[string][]string) [][]string {
 		keys = append(keys, k)
 	}
 
-	if len(keys) < 1 {
+	if len(keys) <= 0 {
 		log.Fatal("No data collected")
 	}
 

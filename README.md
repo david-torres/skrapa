@@ -21,7 +21,6 @@ file = "test.csv" # the output file
 user_agent = "Skrapa" # the user agent sent to websites
 allowed_domains = ["example.com"] # restrict any follow actions to these domains
 delay = 1 # introduce a delay in seconds
-random_delay = 1 # introduce a random delay in seconds
 
 # multiple pipeline blocks instruct Skrapa what to do
 [[pipeline]]
