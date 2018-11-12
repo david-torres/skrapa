@@ -1,243 +1,157 @@
 package main
 
 import (
-	"encoding/csv"
-	"encoding/json"
-	"flag"
-	"io/ioutil"
+	"fmt"
 	"log"
-	"os"
-	"strconv"
+	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/BurntSushi/toml"
-	"github.com/gocolly/colly"
+	internal "github.com/david-torres/skrapa/internal"
+	"github.com/docopt/docopt-go"
+	bolt "go.etcd.io/bbolt"
 )
 
-var saved map[string][]string
-var c *colly.Collector
-var config Config
-
-const defaultUA = "Skrapa"
+var arguments docopt.Opts
 
 func init() {
-	fileName := flag.String("file", "./examples/example.toml", "The Skrapa config file to load")
-	flag.Parse()
+	var usage = `Skrapa.
 
-	// marshal config
-	if _, err := toml.DecodeFile(*fileName, &config); err != nil {
-		log.Fatal(err)
-		return
+Usage:
+	skrapa collect <script>
+	skrapa export (csv|json) <database>
+	skrapa -h | --help
+
+Options:
+	-h --help     Show this screen.
+`
+	var err error
+	arguments, err = docopt.ParseDoc(usage)
+
+	if err != nil {
+		panic(fmt.Sprintf("could not parse commandline arguments: %s", err))
 	}
-
-	// primitive in-memory storage
-	saved = make(map[string][]string)
 }
 
 func main() {
-	// initalize Colly
-	initCollector()
-
-	// load up the pipeline
-	initPipeline()
-
-	// run!
-	err := c.Visit(config.Main.URL)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// wait until done...
-	c.Wait()
-
-	// save the datas
-	save()
-}
-
-// initCollector initalize Colly and some standard outputs
-func initCollector() {
-	ua := defaultUA
-	if config.Main.UserAgent != "" {
-		ua = config.Main.UserAgent
-	}
-
-	c = colly.NewCollector(
-		colly.Async(false),
-		colly.UserAgent(ua),
-		colly.AllowedDomains(config.Main.AllowedDomains...),
-	)
-
-	if config.Main.Delay != 0 {
-		log.Println("Adding delay: " + strconv.Itoa(config.Main.Delay))
-		c.Limit(&colly.LimitRule{
-			DomainGlob: ".*",
-			Delay:      time.Duration(config.Main.Delay) * time.Second,
-		})
-	}
-
-	c.OnRequest(func(r *colly.Request) {
-		log.Println("Attempting to load:", r.URL.String())
-	})
-
-	c.OnError(func(_ *colly.Response, err error) {
-		log.Println("Error:", err)
-	})
-
-	c.OnResponse(func(r *colly.Response) {
-		log.Println("Loaded page from:", r.Request.URL)
-	})
-}
-
-// initPipeline initalize the pipeline as defined in the config
-func initPipeline() {
-	for _, p := range config.Pipeline {
-		i := *p
-		switch p.Action {
-		case "follow":
-			c.OnHTML(p.Selector, func(e *colly.HTMLElement) {
-				log.Printf("Triggering follow pipeline: %q\n", i.Selector)
-				follow(e, i)
-			})
-		case "collect":
-			c.OnHTML(p.Selector, func(e *colly.HTMLElement) {
-				log.Printf("Triggering collect pipeline: %q\n", i.Selector)
-				collect(e, i)
-			})
-		}
-	}
-}
-
-// save writes data to disk
-func save() {
-	switch config.Main.Format {
-	case "json":
-		saveJSON()
-	case "csv":
-		saveCSV()
-	}
-}
-
-// saveJSON write JSON to disk
-func saveJSON() {
-	j, err := json.Marshal(collateJSON(saved))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = ioutil.WriteFile(config.Main.File, j, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("Saved", config.Main.File)
-}
-
-// saveCSV write CSV to disk
-func saveCSV() {
-	file, err := os.Create(config.Main.File)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	for _, value := range collateCSV(saved) {
-		err := writer.Write(value)
+	// collect command
+	if arguments["collect"] == true {
+		// get script name from args
+		scriptName, err := arguments.String("<script>")
 		if err != nil {
-			log.Fatal(err)
+			panic("could not parse script filename")
 		}
+
+		// get database name
+		databaseName := filepath.Base(strings.TrimSuffix(scriptName, filepath.Ext(scriptName)) + ".db")
+
+		// collect
+		collect(scriptName, databaseName)
+		return
 	}
 
-	log.Println("Saved", config.Main.File)
+	// export command
+	if arguments["export"] == true {
+		// get database name from args
+		databaseName, err := arguments.String("<database>")
+		if err != nil {
+			panic("could not parse database filename")
+		}
+
+		var exportType string
+		if arguments["csv"] == true {
+			exportType = "csv"
+		} else if arguments["json"] == true {
+			exportType = "json"
+		} else {
+			panic("unsupported export type")
+		}
+
+		// export
+		export(databaseName, exportType)
+		return
+	}
 }
 
-// actions
+func collect(scriptName string, databaseName string) {
+	// parse script
+	script := parseScript(scriptName)
 
-// follow instructs Skrapa to follow a link
-func follow(e *colly.HTMLElement, p PipelineItem) {
-	link := e.Attr(p.Attribute)
-	u := e.Request.AbsoluteURL(link)
-	log.Println("Following link", u)
+	// initialize a db
+	db := newDB(databaseName)
 
-	// VisitOnce flag used to avoid looping over a common link that might be followed
-	if p.VisitOnce {
-		if u == e.Request.URL.String() {
-			log.Println("Revisit encountered but visit-once enabled, skipping:", u)
-			return
-		}
+	// initialize Collector
+	c := internal.NewCollector(script, db)
+
+	// run collection
+	c.Run()
+}
+
+func export(databaseName string, exportType string) {
+	// open db
+	db := openDB(databaseName)
+
+	// init exporter
+	e := internal.NewExporter(db)
+
+	// get export filename
+	filename := filepath.Base(strings.TrimSuffix(databaseName, filepath.Ext(databaseName)))
+
+	switch exportType {
+	case "csv":
+		filename = filename + ".csv"
+		e.ExportCSV(filename)
+		break
+	case "json":
+		filename = filename + ".json"
+		e.ExportJSON(filename)
+		break
 	}
+}
 
-	err := c.Visit(u)
+func parseScript(scriptName string) *internal.Script {
+	scriptParser := internal.NewScriptParser()
+	script, err := scriptParser.Parse(scriptName)
 	if err != nil {
-		log.Fatal(err)
+		panic(fmt.Sprintf("could not parse script: %s", scriptName))
 	}
+
+	return script
 }
 
-// collect instructs Skrapa to save data
-func collect(e *colly.HTMLElement, p PipelineItem) {
-	var data string
-	if p.Attribute == "text" {
-		data = strings.TrimSpace(e.Text)
-	} else {
-		data = e.Attr(p.Attribute)
+func newDB(databaseName string) *bolt.DB {
+	// open db
+	db, err := bolt.Open(databaseName, 0600, nil)
+	if err != nil {
+		panic(fmt.Sprintf("could not open database: %s", databaseName))
 	}
 
-	saved[p.Column] = append(saved[p.Column], data)
-	log.Printf("Collecting data: %q -> %s\n", p.Column, data)
-}
-
-// util
-
-// collateJSON will massage the data into maps
-func collateJSON(data map[string][]string) []map[string]string {
-	collated := make([]map[string]string, 0)
-	keys := make([]string, 0)
-
-	for k := range data {
-		keys = append(keys, k)
-	}
-
-	if len(keys) <= 0 {
-		log.Fatal("No data collected")
-	}
-
-	for i := 0; i <= len(data[keys[0]])-1; i++ {
-		c := make(map[string]string)
-		for _, k := range keys {
-			c[k] = data[k][i]
+	// init buckets
+	err = db.Update(func(tx *bolt.Tx) error {
+		root, err := tx.CreateBucketIfNotExists(internal.DB)
+		if err != nil {
+			return fmt.Errorf("could not create root bucket: %v", err)
 		}
-		collated = append(collated, c)
+		_, err = root.CreateBucketIfNotExists(internal.Entries)
+		if err != nil {
+			return fmt.Errorf("could not create entries bucket: %v", err)
+		}
+		return nil
+	})
+	if err != nil {
+		panic(fmt.Sprintf("could not initialize database: %v", err))
 	}
 
-	return collated
+	log.Printf("Database initialized: %s", databaseName)
+
+	return db
 }
 
-// collateCSV will massage the data into rows
-func collateCSV(data map[string][]string) [][]string {
-	collated := make([][]string, 0)
-	keys := make([]string, 0)
-
-	for k := range data {
-		keys = append(keys, k)
+func openDB(databaseName string) *bolt.DB {
+	// open db
+	db, err := bolt.Open(databaseName, 0600, nil)
+	if err != nil {
+		panic(fmt.Sprintf("could not open database: %s", databaseName))
 	}
 
-	if len(keys) <= 0 {
-		log.Fatal("No data collected")
-	}
-
-	collated = append(collated, keys)
-
-	for i := 0; i <= len(data[keys[0]])-1; i++ {
-		c := make([]string, 0)
-		for _, k := range keys {
-			c = append(c, data[k][i])
-		}
-
-		collated = append(collated, c)
-	}
-
-	return collated
+	return db
 }

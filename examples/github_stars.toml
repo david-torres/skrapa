@@ -1,7 +1,7 @@
 # Scrape some info from my starred github repos
 #
 # 1. Enter at github.com/david-torres
-# 2. "follow" the Stars link
+# 2. "follow" the Stars link (once)
 # 3. "collect" all the starred project names
 # 4. "collect" all the starred project links
 # 5. "follow" all the starred project links
@@ -12,13 +12,11 @@
 [main]
 # 1. Enter at github.com/david-torres
 url = "https://github.com/david-torres"
-file = "github_stars.json"
-format = "json"
 allowed_domains = ["github.com"]
 
 # 2. "follow" the Stars link
 [[pipeline]]
-selector = "a[title='Stars']"
+selector = "a.UnderlineNav-item:nth-child(3)"
 action = "follow"
 attr = "href"
 visit_once = true
