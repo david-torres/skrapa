@@ -1,26 +1,26 @@
 # primary configuration block
 [main]
 url = "https://example.com" # the url to scrape
-format = "csv" # the output format, json or csv
-file = "test.csv" # the output file
 user_agent = "Skrapa" # the user agent sent to websites
 allowed_domains = ["example.com"] # restrict any follow actions to these domains
 delay = 1 # introduce a delay in seconds
 
 # multiple pipeline blocks instruct Skrapa what to do
-[[pipeline]]
+# currently there's two types of actions: Follow and Collect
+
+[[pipeline]] # Follow example
 selector = "a.link-class" # the 'selector' field allows Skrapa to use css selectors to find elements
 action = "follow" # the 'action' field tells Skrapa what action to perform, in this case, follow a link
 attr = "href" # the 'attr' field tells Skrapa which attribute of this element to use as a url to follow
 visit_once = true # the "visit_once" field is used when the link you are following could appear again on subsequent pages, triggering a looping pipeline, this flag instructs Skrapa to only visit a given URL once
 
-[[pipeline]]
+[[pipeline]] # Collect example
 selector = "span.title"
 action = "collect" # the collect action tells Skrapa this is data we want to save
 column = "title" # the 'column' field tells Skrapa what column/field we should save this data under
 attr = "text" # the 'attr' field tells Skrapa which attribute of this element we want to save
 
-[[pipeline]]
+[[pipeline]] # add more pipeline blocks as needed...
 selector = "span.name"
 action = "collect"
 column = "name"
