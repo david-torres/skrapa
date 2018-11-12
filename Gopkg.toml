@@ -1,0 +1,19 @@
+[[constraint]]
+  name = "github.com/BurntSushi/toml"
+  version = "0.3.1"
+
+[[constraint]]
+  name = "github.com/docopt/docopt-go"
+  revision = "ee0de3bc6815ee19d4a46c7eb90f829db0e014b1" # sigh... they haven't pinned a release in a while but master has been updated with API improvements
+
+[[constraint]]
+  name = "github.com/gocolly/colly"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "go.etcd.io/bbolt"
+  version = "1.3.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true

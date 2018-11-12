@@ -1,0 +1,12 @@
+vendor
+
+# build artifact
+skrapa
+
+# generated from running Skrapa
+*.db
+*.json
+*.csv
+
+# ide
+.vscode
